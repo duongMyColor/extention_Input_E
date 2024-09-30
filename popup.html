@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Smart Input Assistant</title>
+  <style>
+    body { width: 300px; padding: 10px; }
+    input, select, button { width: 100%; margin-bottom: 10px; }
+    #promptList { margin-top: 20px; }
+    .prompt-item { display: flex; justify-content: space-between; margin-bottom: 5px; }
+    .prompt-item button { width: auto; }
+  </style>
+</head>
+<body>
+  <h2>Smart Input Assistant Settings</h2>
+  <input type="text" id="apiKey" placeholder="Enter your OpenAI API Key">
+  <select id="model">
+    <option value="gpt-4o-mini">GPT-4O Mini</option>
+    <option value="gpt-4o">GPT-4O</option>
+  </select>
+  <button id="saveSettings">Save Settings</button>
+  <button id="openPrompt">Open Prompt</button>
+
+  <h3>Manage Prompts</h3>
+  <input type="text" id="newPromptName" placeholder="Prompt Name">
+  <textarea id="newPromptContent" placeholder="Prompt Content" style="width: 100%;"></textarea>
+  <button id="addPrompt">Add Prompt</button>
+
+  <div id="promptList"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
