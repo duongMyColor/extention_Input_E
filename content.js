@@ -1,21 +1,24 @@
 let textBox = null;
 let lastFocusedElement = null;
 let submitButton = null;
-let selectedText = '';
+let selectedText = "";
 let isDragging = false;
 let dragStartX, dragStartY;
 
 function closeTextBox() {
   if (textBox) {
     textBox.remove();
-    document.removeEventListener('click', closeTextBoxOnClickOutside);
-    document.removeEventListener('mousemove', handleDrag);
-    document.removeEventListener('mouseup', stopDragging);
+    document.removeEventListener("click", closeTextBoxOnClickOutside);
+    document.removeEventListener("mousemove", handleDrag);
+    document.removeEventListener("mouseup", stopDragging);
     textBox = null;
-    
+
     if (lastFocusedElement) {
       lastFocusedElement.focus();
-      if (lastFocusedElement.tagName === 'INPUT' || lastFocusedElement.tagName === 'TEXTAREA') {
+      if (
+        lastFocusedElement.tagName === "INPUT" ||
+        lastFocusedElement.tagName === "TEXTAREA"
+      ) {
         const len = lastFocusedElement.value.length;
         lastFocusedElement.setSelectionRange(len, len);
       }
@@ -24,69 +27,142 @@ function closeTextBox() {
 }
 
 function closeTextBoxOnClickOutside(e) {
-  if (textBox && !textBox.contains(e.target) && e.target !== lastFocusedElement) {
+  if (
+    textBox &&
+    !textBox.contains(e.target) &&
+    e.target !== lastFocusedElement
+  ) {
     closeTextBox();
   }
 }
 
+// function submitToAPI(content) {
+//   chrome.storage.sync.get(['apiKey', 'model'], ( result) => {
+//     if (!result.apiKey) {
+//       alert('Please set your API key in the extension popup');
+//       return;
+//     }
+
+//     const apiUrl = 'https://api.openai.com/v1/chat/completions';
+//     const apiKey = result.apiKey;
+//     const model = result.model || 'gpt-4o-mini';
+
+//     submitButton.disabled = true;
+//     submitButton.style.backgroundColor = '#cccccc';
+
+//     fetch(apiUrl, {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/json',
+//         'Authorization': `Bearer ${apiKey}`
+//       },
+//       body: JSON.stringify({
+//         model: model,
+//         messages: [
+//           {
+//             role: "system",
+//             content: "You are a helpful assistant."
+//           },
+//           {
+//             role: "user",
+//             content: content
+//           }
+//         ]
+//       })
+//     })
+//     .then(response => response.json())
+//     .then(data => {
+//       if (data.choices && data.choices.length > 0) {
+//         const output = data.choices[0].message.content;
+//         if (lastFocusedElement && (lastFocusedElement.tagName === 'INPUT' || lastFocusedElement.tagName === 'TEXTAREA')) {
+//           lastFocusedElement.value = output;
+
+//           const inputEvent = new Event('input', { bubbles: true });
+//           lastFocusedElement.dispatchEvent(inputEvent);
+//         } else {
+//           const textarea = textBox.querySelector('textarea');
+//           textarea.value = output;
+//         }
+//       } else {
+//         console.error('API response does not contain expected output');
+//       }
+//     })
+//     .catch(error => {
+//       console.error('Error:', error);
+//     })
+//     .finally(() => {
+//       submitButton.disabled = false;
+//       submitButton.style.backgroundColor = '#4CAF50';
+//     });
+//   });
+// }
+
 function submitToAPI(content) {
-  chrome.storage.sync.get(['apiKey', 'model'], ( result) => {
+  console.log({ content });
+  chrome.storage.sync.get(["apiKey"], (result) => {
     if (!result.apiKey) {
-      alert('Please set your API key in the extension popup');
+      alert("Please set your API key in the extension popup");
       return;
     }
 
-    const apiUrl = 'https://api.openai.com/v1/chat/completions';
-    const apiKey = result.apiKey;
-    const model = result.model || 'gpt-4o-mini';
+    console.log({ result });
+
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${result.apiKey}`;
 
     submitButton.disabled = true;
-    submitButton.style.backgroundColor = '#cccccc';
+    submitButton.style.backgroundColor = "#cccccc";
 
     fetch(apiUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: model,
-        messages: [
+        contents: [
           {
-            role: "system",
-            content: "You are a helpful assistant."
+            parts: [
+              {
+                text: content,
+              },
+            ],
           },
-          {
-            role: "user",
-            content: content
-          }
-        ]
+        ],
+      }),
+    })
+      .then((response) => {
+        console.log({ response });
+        return response.json();
       })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.choices && data.choices.length > 0) {
-        const output = data.choices[0].message.content;
-        if (lastFocusedElement && (lastFocusedElement.tagName === 'INPUT' || lastFocusedElement.tagName === 'TEXTAREA')) {
-          lastFocusedElement.value = output;
-          
-          const inputEvent = new Event('input', { bubbles: true });
-          lastFocusedElement.dispatchEvent(inputEvent);
+      .then((data) => {
+        console.log("dataa lạ:L", data);
+        if (data.candidates && data.candidates.length > 0) {
+          const output = data.candidates[0].content.parts[0].text; // Adjust based on actual response structure
+
+          console.log({ output });
+          if (
+            lastFocusedElement &&
+            (lastFocusedElement.tagName === "INPUT" ||
+              lastFocusedElement.tagName === "TEXTAREA")
+          ) {
+            lastFocusedElement.value = output;
+
+            const inputEvent = new Event("input", { bubbles: true });
+            lastFocusedElement.dispatchEvent(inputEvent);
+          } else {
+            const textarea = textBox.querySelector("textarea");
+            textarea.value = output;
+          }
         } else {
-          const textarea = textBox.querySelector('textarea');
-          textarea.value = output;
+          console.error("API response does not contain expected output");
         }
-      } else {
-        console.error('API response does not contain expected output');
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-    })
-    .finally(() => {
-      submitButton.disabled = false;
-      submitButton.style.backgroundColor = '#4CAF50';
-    });
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+      })
+      .finally(() => {
+        submitButton.disabled = false;
+        submitButton.style.backgroundColor = "#4CAF50";
+      });
   });
 }
 
@@ -96,12 +172,12 @@ function getSelectedText() {
   } else if (document.selection && document.selection.type != "Control") {
     return document.selection.createRange().text;
   }
-  return '';
+  return "";
 }
 
 function createTextBox(initialText) {
-  textBox = document.createElement('div');
-  textBox.id = 'smart-input-assistant-box';
+  textBox = document.createElement("div");
+  textBox.id = "smart-input-assistant-box";
   textBox.style.cssText = `
     position: fixed;
     z-index: 10000;
@@ -112,7 +188,7 @@ function createTextBox(initialText) {
     cursor: move;
   `;
 
-  const dragHandle = document.createElement('div');
+  const dragHandle = document.createElement("div");
   dragHandle.style.cssText = `
   height: 14px;
   background: #e0e0e0;
@@ -128,8 +204,8 @@ function createTextBox(initialText) {
   // dragHandle.addEventListener('mousedown', startDragging);
 
   // Thêm 3 chấm để biểu thị kéo thả
-const dragDots = document.createElement('div');
-dragDots.style.cssText = `
+  const dragDots = document.createElement("div");
+  dragDots.style.cssText = `
   position: absolute;
   top: 50%;
   left: 50%;
@@ -139,26 +215,25 @@ dragDots.style.cssText = `
   align-items: center;
 `;
 
-for (let i = 0; i < 3; i++) {
-  const dot = document.createElement('div');
-  dot.style.cssText = `
+  for (let i = 0; i < 3; i++) {
+    const dot = document.createElement("div");
+    dot.style.cssText = `
     width: 4px;
     height: 4px;
     background-color: #999;
     border-radius: 50%;
     margin: 0 2px;
   `;
-  dragDots.appendChild(dot);
-}
+    dragDots.appendChild(dot);
+  }
 
-dragHandle.appendChild(dragDots);
-textBox.appendChild(dragHandle);
+  dragHandle.appendChild(dragDots);
+  textBox.appendChild(dragHandle);
 
-dragHandle.addEventListener('mousedown', startDragging);
+  dragHandle.addEventListener("mousedown", startDragging);
 
-
-  const closeButton = document.createElement('button');
-  closeButton.innerHTML = '&times;';
+  const closeButton = document.createElement("button");
+  closeButton.innerHTML = "&times;";
   closeButton.style.cssText = `
     position: absolute;
     top: 7px;
@@ -171,14 +246,14 @@ dragHandle.addEventListener('mousedown', startDragging);
     line-height: 1;
     color: #333;
   `;
-  closeButton.addEventListener('click', (e) => {
+  closeButton.addEventListener("click", (e) => {
     e.stopPropagation();
     closeTextBox();
   });
   textBox.appendChild(closeButton);
 
   // Create prompt buttons container
-  const promptButtonsContainer = document.createElement('div');
+  const promptButtonsContainer = document.createElement("div");
   promptButtonsContainer.style.cssText = `
     display: flex;
     flex-wrap: wrap;
@@ -188,10 +263,10 @@ dragHandle.addEventListener('mousedown', startDragging);
   textBox.appendChild(promptButtonsContainer);
 
   // Add prompt buttons
-  chrome.storage.sync.get(['prompts'], (result) => {
+  chrome.storage.sync.get(["prompts"], (result) => {
     if (result.prompts) {
       result.prompts.forEach((prompt, index) => {
-        const promptButton = document.createElement('button');
+        const promptButton = document.createElement("button");
         promptButton.textContent = prompt.name;
         promptButton.style.cssText = `
           padding: 5px 10px;
@@ -200,16 +275,16 @@ dragHandle.addEventListener('mousedown', startDragging);
           border-radius: 3px;
           cursor: pointer;
         `;
-        promptButton.addEventListener('click', () => {
-          const textarea = textBox.querySelector('textarea');
-          textarea.value += (textarea.value ? '\n' : '') + prompt.content;
+        promptButton.addEventListener("click", () => {
+          const textarea = textBox.querySelector("textarea");
+          textarea.value += (textarea.value ? "\n" : "") + prompt.content;
         });
         promptButtonsContainer.appendChild(promptButton);
       });
     }
   });
 
-  const textarea = document.createElement('textarea');
+  const textarea = document.createElement("textarea");
   textarea.style.cssText = `
     width: 600px;
     height: 200px;
@@ -219,8 +294,8 @@ dragHandle.addEventListener('mousedown', startDragging);
   textarea.value = initialText;
   textBox.appendChild(textarea);
 
-  submitButton = document.createElement('button');
-  submitButton.textContent = 'Submit';
+  submitButton = document.createElement("button");
+  submitButton.textContent = "Submit";
   submitButton.style.cssText = `
     display: block;
     margin-top: 10px;
@@ -230,21 +305,27 @@ dragHandle.addEventListener('mousedown', startDragging);
     border: none;
     cursor: pointer;
   `;
-  submitButton.addEventListener('click', () => submitToAPI(textarea.value));
+  submitButton.addEventListener("click", () => submitToAPI(textarea.value));
   textBox.appendChild(submitButton);
 
   // Position the textbox near the mouse cursor
-  textBox.style.left = `${Math.min(window.innerWidth - 220, Math.max(0, lastMouseX))}px`;
-  textBox.style.top = `${Math.min(window.innerHeight - 200, Math.max(0, lastMouseY))}px`;
+  textBox.style.left = `${Math.min(
+    window.innerWidth - 220,
+    Math.max(0, lastMouseX)
+  )}px`;
+  textBox.style.top = `${Math.min(
+    window.innerHeight - 200,
+    Math.max(0, lastMouseY)
+  )}px`;
 
   document.body.appendChild(textBox);
 
   textarea.focus();
   textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 
-  document.addEventListener('click', closeTextBoxOnClickOutside);
-  document.addEventListener('mousemove', handleDrag);
-  document.addEventListener('mouseup', stopDragging);
+  document.addEventListener("click", closeTextBoxOnClickOutside);
+  document.addEventListener("mousemove", handleDrag);
+  document.addEventListener("mouseup", stopDragging);
 }
 
 function startDragging(e) {
@@ -268,7 +349,7 @@ function stopDragging() {
 let lastMouseX = 0;
 let lastMouseY = 0;
 
-document.addEventListener('mousemove', (e) => {
+document.addEventListener("mousemove", (e) => {
   lastMouseX = e.clientX;
   lastMouseY = e.clientY;
 });
@@ -277,29 +358,44 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log("Message received in content script:", request);
   if (request.action === "open_prompt") {
     console.log("Open prompt action received");
-    
+
     if (textBox) {
       closeTextBox();
-      sendResponse({success: true, message: "Text box closed"});
+      sendResponse({ success: true, message: "Text box closed" });
     } else {
       const focusedElement = document.activeElement;
-      selectedText = '';
-      
-      if (focusedElement && (focusedElement.tagName === 'INPUT' || focusedElement.tagName === 'TEXTAREA')) {
+      selectedText = "";
+
+      if (
+        focusedElement &&
+        (focusedElement.tagName === "INPUT" ||
+          focusedElement.tagName === "TEXTAREA")
+      ) {
         lastFocusedElement = focusedElement;
         if (focusedElement.selectionStart !== undefined) {
-          selectedText = focusedElement.value.substring(focusedElement.selectionStart, focusedElement.selectionEnd);
+          selectedText = focusedElement.value.substring(
+            focusedElement.selectionStart,
+            focusedElement.selectionEnd
+          );
         }
       } else {
         selectedText = getSelectedText();
       }
-      
-      if (selectedText || (focusedElement && (focusedElement.tagName === 'INPUT' || focusedElement.tagName === 'TEXTAREA'))) {
+
+      if (
+        selectedText ||
+        (focusedElement &&
+          (focusedElement.tagName === "INPUT" ||
+            focusedElement.tagName === "TEXTAREA"))
+      ) {
         createTextBox(selectedText);
-        sendResponse({success: true, message: "Text box opened"});
+        sendResponse({ success: true, message: "Text box opened" });
       } else {
         console.log("No text selected and no input element is focused");
-        sendResponse({success: false, message: "No text selected and no input element is focused"});
+        sendResponse({
+          success: false,
+          message: "No text selected and no input element is focused",
+        });
       }
     }
   }
